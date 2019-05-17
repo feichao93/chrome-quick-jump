@@ -1,0 +1,28 @@
+{
+  "name": "chrome-quick-jump",
+  "version": "0.1",
+  "manifest_version": 2,
+  "homepage_url": "https://github.com/shinima/chrome-quick-jump",
+  "permissions": ["activeTab", "tabs", "storage", "contextMenus"],
+  "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self'",
+  "web_accessible_resources": ["quick-jump.html", "dist/quick-jump.js"],
+  "commands": {
+    "activate-quick-jump": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+F",
+        "mac": "Command+Shift+F"
+      },
+      "description": "打开 quick jump"
+    }
+  },
+  "icons": {
+    "16": "images/icon.png",
+    "32": "images/icon.png",
+    "48": "images/icon.png",
+    "128": "images/icon.png"
+  },
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": false
+  }
+}
