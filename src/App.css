@@ -1,3 +1,14 @@
+/* 在 standalone 模式下，去掉 overlay 背景色 */
+.bp3-omnibar-overlay.env-standalone .bp3-overlay-backdrop {
+  background-color: transparent;
+}
+
+.standalone-info {
+  --width: 80vw;
+  width: var(--width);
+  margin: 2vh auto auto;
+}
+
 .search-item {
   display: flex;
   align-items: center;
@@ -28,16 +39,21 @@
 }
 
 @media all and (min-width: 700px) {
-  .bp3-omnibar {
+  .bp3-omnibar,
+  .standalone-info {
     --width: 60vw;
   }
 }
 
 @media all and (min-width: 1000px) {
-  .bp3-omnibar {
+  .bp3-omnibar,
+  .standalone-info {
     --width: 600px;
   }
 }
+
+/* =========================== */
+/* 以下的样式是从 blueprint doc app 中拷贝过来的 */
 
 .bp3-omnibar {
   filter: blur(0);

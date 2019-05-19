@@ -1,4 +1,4 @@
-import { Classes, MenuItem } from '@blueprintjs/core'
+import { Callout, Classes, MenuItem } from '@blueprintjs/core'
 import { IItemRendererProps, Omnibar } from '@blueprintjs/select'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -109,31 +109,45 @@ export default function App() {
   const inputRef = useRef<HTMLInputElement>()
 
   return (
-    <Omnibar
-      query={query}
-      onQueryChange={nextQuery => setQuery(nextQuery)}
-      inputProps={{ inputRef: inputRef as any, autoFocus: true }}
-      activeItem={activeItem}
-      onActiveItemChange={next => {
-        if (next == null) {
-          onChangeActiveItemId(-1)
-        } else {
-          onChangeActiveItemId(next.item.id)
-        }
-      }}
-      isOpen={isOpen}
-      onClose={() => {
-        setIsOpen(false)
-        env.hideContainer()
-      }}
-      items={searchResult}
-      itemRenderer={itemRenderer}
-      onItemSelect={item => {
-        env.jumpTo(item.item)
-        setIsOpen(false)
-        env.hideContainer()
-      }}
-    />
+    <>
+      {env.isStandaloneMode() && (
+        <Callout
+          className="standalone-info"
+          intent="primary"
+          title="独立标签页说明"
+          icon="info-sign"
+        >
+          quick-jump 通过向页面注入代码来实现页面内弹框。 受 chrome
+          政策限制，拓展不能向部分页面注入代码，quick-jump 已打开独立页面。
+        </Callout>
+      )}
+      <Omnibar
+        query={query}
+        overlayProps={{ className: env.isStandaloneMode() ? 'env-standalone' : '' }}
+        onQueryChange={nextQuery => setQuery(nextQuery)}
+        inputProps={{ inputRef: inputRef as any, autoFocus: true }}
+        activeItem={activeItem}
+        onActiveItemChange={next => {
+          if (next == null) {
+            onChangeActiveItemId(-1)
+          } else {
+            onChangeActiveItemId(next.item.id)
+          }
+        }}
+        isOpen={isOpen}
+        onClose={() => {
+          setIsOpen(false)
+          env.hideContainer()
+        }}
+        items={searchResult}
+        itemRenderer={itemRenderer}
+        onItemSelect={item => {
+          env.jumpTo(item.item)
+          setIsOpen(false)
+          env.hideContainer()
+        }}
+      />
+    </>
   )
 
   function openQuickJump(tabs: Tab[], initQuery: string) {
@@ -142,7 +156,9 @@ export default function App() {
       setQuery(initQuery)
     }
     setTabs(tabs)
-    inputRef.current.select()
-    inputRef.current.focus()
+    requestAnimationFrame(() => {
+      inputRef.current.select()
+      inputRef.current.focus()
+    })
   }
 }

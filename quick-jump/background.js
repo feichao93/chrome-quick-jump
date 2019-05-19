@@ -1,16 +1,30 @@
 function activateQuickJump() {
   const permittedSchemas = ['http:', 'https:', 'file:', 'ftp:']
 
+  function activateQuickJumpInStandaloneMode() {
+    chrome.tabs.create({
+      active: true,
+      url: chrome.runtime.getURL('/quick-jump.html'),
+    })
+  }
+
   chrome.windows.getLastFocused(lastFocusedWindow => {
     chrome.tabs.query({ active: true, windowId: lastFocusedWindow.id }, ([tab]) => {
-      const isPermittedSchema = permittedSchemas.includes(new URL(tab.url).protocol)
-      if (isPermittedSchema) {
-        chrome.tabs.executeScript({ file: 'inject-iframe.js' })
+      const url = new URL(tab.url)
+      const isPermittedSchema = permittedSchemas.includes(url.protocol)
+      const isPermittedHost = url.host !== 'chrome.google.com'
+      if (isPermittedSchema && isPermittedHost) {
+        try {
+          chrome.tabs.executeScript({ file: 'inject-iframe.js' })
+        } catch (e) {
+          // TODO 这个 catch 似乎并不能捕获到错误
+          console.log(
+            `chrome.tabs.executeScript({ file: 'inject-iframe.js' }) failed due to: ${e.message}`,
+          )
+          activateQuickJumpInStandaloneMode()
+        }
       } else {
-        chrome.tabs.create({
-          active: true,
-          url: chrome.runtime.getURL('/quick-jump.html'),
-        })
+        activateQuickJumpInStandaloneMode()
       }
     })
   })
