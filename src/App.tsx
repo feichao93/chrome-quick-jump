@@ -51,13 +51,12 @@ const itemRenderer = (item: FuseItem, { modifiers, handleClick }: IItemRendererP
 
   return (
     <MenuItem
-      className="fuse-item"
       key={item.item.id}
       active={modifiers.active}
       text={
         <div className="search-item">
-          <div>
-            <div>{mark(item.item.title, matchMap.get('title'))}</div>
+          <div className="left-part">
+            <div className="search-item-title">{mark(item.item.title, matchMap.get('title'))}</div>
             <small className={Classes.TEXT_MUTED}>{mark(item.item.url, matchMap.get('url'))}</small>
           </div>
           {item.item.favIconUrl ? (

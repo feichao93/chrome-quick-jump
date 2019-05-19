@@ -14,16 +14,21 @@
   align-items: center;
 }
 
+.search-item em {
+  font-weight: bold;
+  font-style: normal;
+}
+
+.search-item .left-part {
+  overflow: hidden;
+  margin-right: 8px;
+}
+
 .search-item > img,
 .search-item > .placeholder {
   flex: 0 0 16px;
   height: 16px;
   margin-left: auto;
-}
-
-.fuse-item em {
-  font-weight: bold;
-  font-style: normal;
 }
 
 .bp3-menu-item.bp3-active small {
