@@ -1,11 +1,13 @@
 {
   "compilerOptions": {
-    "module": "es2015",
+    "module": "esnext",
     "noEmit": true,
     "target": "es2018",
     "strict": true,
+    "esModuleInterop": true,
     "strictNullChecks": false,
     "jsx": "react",
+    "resolveJsonModule": true,
     "moduleResolution": "node"
   },
   "include": ["src/**/*"]

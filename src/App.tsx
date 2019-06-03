@@ -2,43 +2,24 @@ import { Callout, Classes, MenuItem } from '@blueprintjs/core'
 import { IItemRendererProps, Omnibar } from '@blueprintjs/select'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import * as Fuse from 'fuse.js'
 import * as env from './env'
 import './App.css'
+import Matcher, { Entry } from './Matcher'
+import { Item } from './env'
 
-type Tab = chrome.tabs.Tab
-
-type FuseItem = {
-  item: Tab
-  matches: Array<{
-    arrayIndex: number
-    indices: Array<[number, number]>
-    key: string
-    value: string
-  }>
-}
-
-function mark(str: string, indices: Array<[number, number]>) {
-  if (indices == null || indices.length === 0) {
+function decorate(str: string, matches: Array<{ start: number; end: number }>) {
+  if (matches == null || matches.length === 0) {
     return str
   }
-  const lens = indices.map(([start, end]) => end - start + 1)
-  const maxLen = Math.max(...lens)
 
   let t = 0
   let result: React.ReactNode[] = []
-  // fuse.js 返回的 end 是 inclusive 的，我们在用的时候需要 +1 使其变为 exclusive
-  for (const [start, end] of indices) {
-    const len = end + 1 - start
-    // 不渲染过短的匹配项
-    if (len < Math.ceil(maxLen / 2)) {
-      continue
-    }
+  for (const { start, end } of matches) {
     if (t < start) {
       result.push(<span key={t}>{str.substring(t, start)}</span>)
     }
-    result.push(<em key={start}>{str.substring(start, end + 1)}</em>)
-    t = end + 1
+    result.push(<em key={start}>{str.substring(start, end)}</em>)
+    t = end
   }
   if (t < str.length) {
     result.push(<span key={t}>{str.substring(t)}</span>)
@@ -46,21 +27,23 @@ function mark(str: string, indices: Array<[number, number]>) {
   return result
 }
 
-const itemRenderer = (item: FuseItem, { modifiers, handleClick }: IItemRendererProps) => {
-  const matchMap = new Map(item.matches.map(mat => [mat.key, mat.indices]))
-
+const itemRenderer = (entry: Entry, { modifiers, handleClick }: IItemRendererProps) => {
   return (
     <MenuItem
-      key={item.item.id}
+      key={entry.item.id}
       active={modifiers.active}
       text={
         <div className="search-item">
           <div className="left-part">
-            <div className="search-item-title">{mark(item.item.title, matchMap.get('title'))}</div>
-            <small className={Classes.TEXT_MUTED}>{mark(item.item.url, matchMap.get('url'))}</small>
+            <div className="search-item-title">
+              {decorate(entry.item.title, entry.titleMatches)}
+            </div>
+            <small className={Classes.TEXT_MUTED}>
+              {decorate(entry.item.url, entry.urlMatches)}
+            </small>
           </div>
-          {item.item.favIconUrl ? (
-            <img src={item.item.favIconUrl} />
+          {entry.item.type === 'tab' && entry.item.favIconUrl ? (
+            <img src={entry.item.favIconUrl} />
           ) : (
             <div className="placeholder" />
           )}
@@ -71,25 +54,13 @@ const itemRenderer = (item: FuseItem, { modifiers, handleClick }: IItemRendererP
   )
 }
 
-const fuseOptions = {
-  shouldSort: true,
-  includeMatches: true,
-  tokenize: true,
-  threshold: 0.2,
-  location: 0,
-  distance: 1000,
-  maxPatternLength: 32,
-  minMatchCharLength: 1,
-  keys: ['title', 'url'],
-}
-
 export default function App() {
-  const [tabs, setTabs] = useState<Tab[]>([])
+  const [items, setItems] = useState<Item[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [query, setQuery] = useState('')
 
-  const fuse = useMemo(() => new Fuse(tabs, fuseOptions), [tabs])
-  const searchResult: FuseItem[] = useMemo(() => fuse.search(query), [fuse, query]) as any
+  const matcher = useMemo(() => new Matcher(items), [items])
+  const searchResult = useMemo(() => matcher.search(query), [matcher, query])
 
   useEffect(() => {
     const unsubscribe = env.addOpenQuickJumpCallback(openQuickJump)
@@ -103,8 +74,8 @@ export default function App() {
     }
   }, [query, isOpen])
 
-  const [activeItemId, onChangeActiveItemId] = useState<number>(-1)
-  const activeItem = searchResult.find(item => item.item.id === activeItemId)
+  const [activeItemKey, onChangeActiveItemKey] = useState<string>(null)
+  const activeItem = searchResult.find(entry => entry.item.itemKey === activeItemKey)
   const inputRef = useRef<HTMLInputElement>()
 
   return (
@@ -126,11 +97,11 @@ export default function App() {
         onQueryChange={nextQuery => setQuery(nextQuery)}
         inputProps={{ inputRef: inputRef as any, autoFocus: true }}
         activeItem={activeItem}
-        onActiveItemChange={next => {
-          if (next == null) {
-            onChangeActiveItemId(-1)
+        onActiveItemChange={entry => {
+          if (entry == null) {
+            onChangeActiveItemKey(null)
           } else {
-            onChangeActiveItemId(next.item.id)
+            onChangeActiveItemKey(entry.item.itemKey)
           }
         }}
         isOpen={isOpen}
@@ -140,8 +111,8 @@ export default function App() {
         }}
         items={searchResult}
         itemRenderer={itemRenderer}
-        onItemSelect={item => {
-          env.jumpTo(item.item)
+        onItemSelect={entry => {
+          env.jumpTo(entry.item)
           setIsOpen(false)
           env.hideContainer()
         }}
@@ -149,12 +120,12 @@ export default function App() {
     </>
   )
 
-  function openQuickJump(tabs: Tab[], initQuery: string) {
+  function openQuickJump(items: Item[], initQuery: string) {
     if (!isOpen) {
       setIsOpen(true)
       setQuery(initQuery)
     }
-    setTabs(tabs)
+    setItems(items)
     requestAnimationFrame(() => {
       inputRef.current.select()
       inputRef.current.focus()

@@ -1,11 +1,32 @@
+const quickJumpUrl = chrome.runtime.getURL('/quick-jump.html')
+
+function ensurePortReady(tab, callback) {
+  if (portByTabId.has(tab.id)) {
+    Promise.resolve(portByTabId.get(tab.id)).then(callback)
+  } else {
+    const listener = port => {
+      if (port.sender.tab.id === tab.id) {
+        callback(port)
+        chrome.runtime.onConnect.removeListener(listener)
+      }
+    }
+    chrome.runtime.onConnect.addListener(listener)
+  }
+}
+
+const portByTabId = new Map()
+
 function activateQuickJump() {
   const permittedSchemas = ['http:', 'https:', 'file:', 'ftp:']
 
-  function activateQuickJumpInStandaloneMode() {
-    chrome.tabs.create({
-      active: true,
-      url: chrome.runtime.getURL('/quick-jump.html'),
-    })
+  function activateQuickJumpInStandaloneMode(callback) {
+    chrome.tabs.create(
+      {
+        active: true,
+        url: quickJumpUrl,
+      },
+      callback,
+    )
   }
 
   chrome.windows.getLastFocused(lastFocusedWindow => {
@@ -14,17 +35,16 @@ function activateQuickJump() {
       const isPermittedSchema = permittedSchemas.includes(url.protocol)
       const isPermittedHost = url.host !== 'chrome.google.com'
       if (isPermittedSchema && isPermittedHost) {
-        try {
-          chrome.tabs.executeScript({ file: 'inject-iframe.js' })
-        } catch (e) {
-          // TODO 这个 catch 似乎并不能捕获到错误
-          console.log(
-            `chrome.tabs.executeScript({ file: 'inject-iframe.js' }) failed due to: ${e.message}`,
-          )
-          activateQuickJumpInStandaloneMode()
-        }
+        chrome.tabs.executeScript({ file: 'inject-iframe.js' })
+      } else if (tab.url === quickJumpUrl) {
+        // 已经处于 standalone mode
+        portByTabId.get(tab.id).postMessage('open-quick-jump')
       } else {
-        activateQuickJumpInStandaloneMode()
+        activateQuickJumpInStandaloneMode(tab => {
+          ensurePortReady(tab, port => {
+            port.postMessage('open-quick-jump')
+          })
+        })
       }
     })
   })
@@ -40,6 +60,14 @@ chrome.runtime.onInstalled.addListener(() => {
     id: 'shortcut-setting',
     title: '配置快捷键',
     contexts: ['page_action'],
+  })
+})
+
+chrome.runtime.onConnect.addListener(port => {
+  const tabId = port.sender.tab.id
+  portByTabId.set(tabId, port)
+  port.onDisconnect.addListener(() => {
+    portByTabId.delete(tabId)
   })
 })
 
@@ -60,14 +88,34 @@ chrome.commands.onCommand.addListener(command => {
 })
 
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-  if (request.type === 'request-for-tabs-info') {
+  if (request.type === 'query-items') {
+    chrome.bookmarks.getTree(tree => {
+      // TODO
+      console.log(tree)
+    })
+
     chrome.tabs.query({}, tabs => {
-      sendResponse(tabs)
+      /** @type {Item[]} */
+      const tabItems = tabs.map(tab => ({
+        type: 'tab',
+        itemKey: `tab-${tab.id}`,
+        id: tab.id,
+        windowId: tab.windowId,
+        title: tab.title,
+        url: tab.url,
+        favIconUrl: tab.favIconUrl,
+      }))
+      sendResponse(tabItems)
     })
     // 返回 true 表示我们将会异步地调用 `sendResponse`
     return true
-  } else if (request.type === 'jump-to-tab') {
-    chrome.tabs.update(request.tab.id, { active: true })
-    chrome.windows.update(request.tab.windowId, { focused: true })
+  } else if (request.type === 'jump') {
+    const { item } = request
+    if (item.type === 'tab') {
+      chrome.tabs.update(item.id, { active: true })
+      chrome.windows.update(item.windowId, { focused: true })
+    } else {
+      chrome.tabs.create({ url: item.url, active: true })
+    }
   }
 })

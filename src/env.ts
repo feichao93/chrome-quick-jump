@@ -1,4 +1,30 @@
-type Tab = chrome.tabs.Tab
+export type Item = TabItem // | BookmarkItem | HistoryItem
+
+export type TabItem = {
+  type: 'tab'
+  itemKey: string
+  id: number
+  windowId: number
+  title: string
+  url: string
+  favIconUrl: string
+}
+
+// export type BookmarkItem = {
+//   type: 'bookmark'
+//   id: string | number
+//   // TODO path?
+//   title: string
+//   url: string
+//   favIconUrl: string
+// }
+//
+// export type HistoryItem = {
+//   type: 'history'
+//   id: string | number
+//   title: string
+//   url: string
+// }
 
 /** 获取 QuickJumpApp 的运行模式 */
 function getMode(): 'iframe' | 'standalone' {
@@ -14,10 +40,10 @@ export function isStandaloneMode() {
   return getMode() === 'standalone'
 }
 
-/** 异步获取浏览器的标签页信息 */
-function requestTabsInfo(callback: (tabs: Tab[]) => void) {
-  chrome.runtime.sendMessage({ type: 'request-for-tabs-info' }, (tabs: Tab[]) => {
-    callback(tabs)
+/** 异步获取浏览器的标签页、历史记录、收藏夹信息 */
+function queryItems(callback: (items: Item[]) => void) {
+  chrome.runtime.sendMessage({ type: 'query-items' }, (items: Item[]) => {
+    callback(items)
   })
 }
 
@@ -27,7 +53,9 @@ export function hideContainer() {
   if (getMode() === 'iframe') {
     window.parent.postMessage('hide-quick-jump-iframe', '*')
   } else {
-    window.close()
+    if (process.env.NODE_ENV === 'production') {
+      window.close()
+    }
   }
 }
 
@@ -38,20 +66,20 @@ export function signalReadyForQuickJump() {
   }
 }
 
-export function jumpTo(tab: Tab) {
-  chrome.runtime.sendMessage({ type: 'jump-to-tab', tab })
+export function jumpTo(item: Item) {
+  chrome.runtime.sendMessage({ type: 'jump', item })
 }
 
 /** 在 iframe 环境下，注册 open-quick-jump 事件的回调函数
  * 当用户按下 quick-jump 扩展的快捷键时，该事件将被触发 */
-export function addOpenQuickJumpCallback(callback: (tabs: Tab[], initQuery: string) => void) {
+export function addOpenQuickJumpCallback(callback: (items: Item[], initQuery: string) => void) {
   if (getMode() === 'iframe') {
     const listener = (msg: MessageEvent) => {
       // 来自于上层页面的消息
       if (msg.source === window.parent && msg.data === 'open-quick-jump') {
         chrome.storage.local.get('lastQuery', ({ lastQuery }) => {
-          requestTabsInfo(tabs => {
-            callback(tabs, lastQuery || '')
+          queryItems(items => {
+            callback(items, lastQuery || '')
           })
         })
       }
@@ -59,10 +87,15 @@ export function addOpenQuickJumpCallback(callback: (tabs: Tab[], initQuery: stri
     window.addEventListener('message', listener)
     return () => window.removeEventListener('message', listener)
   } else {
-    chrome.storage.local.get('lastQuery', ({ lastQuery }) => {
-      requestTabsInfo(tabs => {
-        callback(tabs, lastQuery || '')
-      })
+    const port = chrome.runtime.connect({ name: 'open-quick-jump' })
+    port.onMessage.addListener(msg => {
+      if (msg === 'open-quick-jump') {
+        chrome.storage.local.get('lastQuery', ({ lastQuery }) => {
+          queryItems(items => {
+            callback(items, lastQuery || '')
+          })
+        })
+      }
     })
   }
 }

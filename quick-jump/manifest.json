@@ -3,7 +3,7 @@
   "version": "0.1.2",
   "manifest_version": 2,
   "homepage_url": "https://github.com/shinima/chrome-quick-jump",
-  "permissions": ["activeTab", "tabs", "storage", "contextMenus"],
+  "permissions": ["activeTab", "tabs", "storage", "contextMenus", "bookmarks"],
   "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self'",
   "web_accessible_resources": ["quick-jump.html", "dist/quick-jump.js"],
   "commands": {
