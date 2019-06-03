@@ -1,10 +1,15 @@
 import { getInputCandidates } from './getPinyin'
 import { Item } from './env'
 
+export interface Range {
+  start: number
+  end: number
+}
+
 export interface Entry {
   item: Item
-  urlMatches: Array<{ start: number; end: number }>
-  titleMatches: Array<{ start: number; end: number }>
+  urlMatches: Range[]
+  titleMatches: Range[]
   score: number
 }
 
@@ -12,7 +17,7 @@ function sortBy<T>(arr: T[], iteratee: (t: T) => number) {
   return arr.sort((a, b) => iteratee(a) - iteratee(b))
 }
 
-export function searchUrl(url: string, keyword: string) {
+function searchUrl(url: string, keyword: string) {
   const idx = url.indexOf(keyword)
   if (idx !== -1) {
     return { start: idx, end: idx + keyword.length }
@@ -21,7 +26,7 @@ export function searchUrl(url: string, keyword: string) {
   }
 }
 
-export function searchTitle(title: string, keyword: string) {
+function searchTitle(title: string, keyword: string) {
   const candidates = getInputCandidates(title)
   for (let start = 0; start < candidates.length; start++) {
     let consumed = 0 // keyword 被消费的长度
@@ -51,7 +56,7 @@ export function searchTitle(title: string, keyword: string) {
   return null // 匹配失败
 }
 
-function dedupeMatches(matches: Array<{ start: number; end: number }>) {
+function dedupeMatches(matches: Range[]) {
   // 按匹配长度降序排序
   const sorted = sortBy(matches.slice(), m => -(m.end - m.start))
   const result: typeof matches = []
@@ -71,7 +76,6 @@ function dedupeMatches(matches: Array<{ start: number; end: number }>) {
   return result
 }
 
-// TODO 还需要考虑收藏夹和历史记录
 export default class Matcher {
   constructor(private items: Item[]) {}
 
@@ -99,7 +103,11 @@ export default class Matcher {
 
       entry.titleMatches = dedupeMatches(entry.titleMatches)
       entry.urlMatches = dedupeMatches(entry.urlMatches)
+
       entry.score = entry.titleMatches.length * 2 + entry.urlMatches.length
+      if (entry.item.type === 'tab') {
+        entry.score *= 2
+      }
 
       if (entry.score > 0) {
         result.push(entry)

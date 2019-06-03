@@ -87,35 +87,78 @@ chrome.commands.onCommand.addListener(command => {
   }
 })
 
+function handleQueryItems(request, sender, sendResponse) {
+  let readyCount = 0
+  function tryComplete() {
+    if (readyCount === 2) {
+      sendResponse(items)
+    }
+  }
+
+  const items = []
+
+  chrome.bookmarks.getTree(tree => {
+    /** @type {Item[]}*/
+    const bookmarkItems = []
+    traverse([], tree[0].children)
+    items.push(...bookmarkItems)
+
+    readyCount++
+    tryComplete()
+
+    function traverse(prefix, array) {
+      for (const mark of array) {
+        if (Array.isArray(mark.children)) {
+          traverse(prefix.concat([mark.title]), mark.children)
+        } else {
+          bookmarkItems.push({
+            type: 'bookmark',
+            itemKey: `bookmark-${mark.id}`,
+            id: mark.id,
+            path: prefix,
+            title: mark.title,
+            url: mark.url,
+          })
+        }
+      }
+    }
+  })
+
+  chrome.tabs.query({}, tabs => {
+    /** @type {Item[]} */
+    const tabItems = tabs.map(tab => ({
+      type: 'tab',
+      itemKey: `tab-${tab.id}`,
+      id: tab.id,
+      windowId: tab.windowId,
+      title: tab.title,
+      url: tab.url,
+      favIconUrl: tab.favIconUrl,
+    }))
+    items.push(...tabItems)
+
+    readyCount++
+    tryComplete()
+  })
+
+  // 返回 true 表示我们将会异步地调用 `sendResponse`
+  return true
+}
+
+function handleJump(request) {
+  const { item } = request
+  if (item.type === 'tab') {
+    chrome.tabs.update(item.id, { active: true })
+    chrome.windows.update(item.windowId, { focused: true })
+  } else {
+    chrome.tabs.create({ url: item.url, active: true })
+  }
+}
+
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
   if (request.type === 'query-items') {
-    chrome.bookmarks.getTree(tree => {
-      // TODO
-      console.log(tree)
-    })
-
-    chrome.tabs.query({}, tabs => {
-      /** @type {Item[]} */
-      const tabItems = tabs.map(tab => ({
-        type: 'tab',
-        itemKey: `tab-${tab.id}`,
-        id: tab.id,
-        windowId: tab.windowId,
-        title: tab.title,
-        url: tab.url,
-        favIconUrl: tab.favIconUrl,
-      }))
-      sendResponse(tabItems)
-    })
-    // 返回 true 表示我们将会异步地调用 `sendResponse`
-    return true
+    return handleQueryItems(request, sender, sendResponse)
   } else if (request.type === 'jump') {
-    const { item } = request
-    if (item.type === 'tab') {
-      chrome.tabs.update(item.id, { active: true })
-      chrome.windows.update(item.windowId, { focused: true })
-    } else {
-      chrome.tabs.create({ url: item.url, active: true })
-    }
+    return handleJump(request, sender, sendResponse)
   }
 })

@@ -1,13 +1,38 @@
-import { Callout, Classes, MenuItem } from '@blueprintjs/core'
+import React, { ReactNode, useEffect, useMemo, useRef, useState } from 'react'
+import { Callout, Classes, Icon, MenuItem } from '@blueprintjs/core'
 import { IItemRendererProps, Omnibar } from '@blueprintjs/select'
-import * as React from 'react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import Matcher, { Entry, Range } from './Matcher'
 import * as env from './env'
 import './App.css'
-import Matcher, { Entry } from './Matcher'
-import { Item } from './env'
 
-function decorate(str: string, matches: Array<{ start: number; end: number }>) {
+function StandaloneModeInfo() {
+  if (!env.isStandaloneMode()) {
+    return null
+  }
+  return (
+    <Callout className="standalone-info" intent="primary" title="独立标签页说明" icon="info-sign">
+      quick-jump 通过向页面注入代码来实现页面内弹框。 受 chrome
+      政策限制，扩展不能向部分页面注入代码，quick-jump 已打开独立页面。
+    </Callout>
+  )
+}
+
+function Path({ path }: { path: string[] }) {
+  const array: ReactNode[] = []
+  for (let i = 0; i < path.length - 1; i++) {
+    array.push(path[i])
+    array.push(<Icon key={`icon-${i}`} icon="caret-right" />)
+  }
+  array.push(path[path.length - 1])
+
+  return (
+    <div>
+      <small className={Classes.TEXT_MUTED}>{array}</small>
+    </div>
+  )
+}
+
+function decorate(str: string, matches: Range[]) {
   if (matches == null || matches.length === 0) {
     return str
   }
@@ -41,11 +66,10 @@ const itemRenderer = (entry: Entry, { modifiers, handleClick }: IItemRendererPro
             <small className={Classes.TEXT_MUTED}>
               {decorate(entry.item.url, entry.urlMatches)}
             </small>
+            {entry.item.type === 'bookmark' && <Path path={entry.item.path} />}
           </div>
-          {entry.item.type === 'tab' && entry.item.favIconUrl ? (
-            <img src={entry.item.favIconUrl} />
-          ) : (
-            <div className="placeholder" />
+          {entry.item.type === 'tab' && entry.item.favIconUrl && (
+            <img alt="favicon" src={entry.item.favIconUrl} />
           )}
         </div>
       }
@@ -55,7 +79,7 @@ const itemRenderer = (entry: Entry, { modifiers, handleClick }: IItemRendererPro
 }
 
 export default function App() {
-  const [items, setItems] = useState<Item[]>([])
+  const [items, setItems] = useState<env.Item[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [query, setQuery] = useState('')
 
@@ -80,17 +104,7 @@ export default function App() {
 
   return (
     <>
-      {env.isStandaloneMode() && (
-        <Callout
-          className="standalone-info"
-          intent="primary"
-          title="独立标签页说明"
-          icon="info-sign"
-        >
-          quick-jump 通过向页面注入代码来实现页面内弹框。 受 chrome
-          政策限制，拓展不能向部分页面注入代码，quick-jump 已打开独立页面。
-        </Callout>
-      )}
+      <StandaloneModeInfo />
       <Omnibar
         query={query}
         overlayProps={{ className: env.isStandaloneMode() ? 'env-standalone' : '' }}
@@ -120,7 +134,7 @@ export default function App() {
     </>
   )
 
-  function openQuickJump(items: Item[], initQuery: string) {
+  function openQuickJump(items: env.Item[], initQuery: string) {
     if (!isOpen) {
       setIsOpen(true)
       setQuery(initQuery)

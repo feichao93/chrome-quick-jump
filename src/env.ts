@@ -1,4 +1,5 @@
-export type Item = TabItem // | BookmarkItem | HistoryItem
+// TODO 还需要考虑历史记录
+export type Item = TabItem | BookmarkItem // | HistoryItem
 
 export type TabItem = {
   type: 'tab'
@@ -10,15 +11,16 @@ export type TabItem = {
   favIconUrl: string
 }
 
-// export type BookmarkItem = {
-//   type: 'bookmark'
-//   id: string | number
-//   // TODO path?
-//   title: string
-//   url: string
-//   favIconUrl: string
-// }
-//
+export type BookmarkItem = {
+  type: 'bookmark'
+  itemKey: string
+  id: string
+
+  path: string[]
+  title: string
+  url: string
+}
+
 // export type HistoryItem = {
 //   type: 'history'
 //   id: string | number
