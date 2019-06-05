@@ -21,7 +21,7 @@ export function getInputCandidates(str: string) {
     if (map.has(char)) {
       result.push(map.get(char))
     } else {
-      result.push([char])
+      result.push([char.toLowerCase()])
     }
   }
 

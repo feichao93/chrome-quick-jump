@@ -79,10 +79,54 @@ function dedupeMatches(matches: Range[]) {
 export default class Matcher {
   constructor(private items: Item[]) {}
 
+  preprocess(query: string): { defaultShowAll: boolean; keywords: string[]; searchItems: Item[] } {
+    const keywords = query
+      .toLowerCase()
+      .split(/\s+/)
+      .filter(Boolean)
+    if (keywords.length === 0) {
+      return { defaultShowAll: false, keywords: [], searchItems: [] }
+    }
+    const [first, ...rest] = keywords
+    if (first === 'h' || first === 'history') {
+      return {
+        defaultShowAll: true,
+        keywords: rest,
+        searchItems: this.items.filter(item => item.type === 'history'),
+      }
+    } else if (first === 'b' || first === 'bookmark') {
+      return {
+        defaultShowAll: true,
+        keywords: rest,
+        searchItems: this.items.filter(item => item.type === 'bookmark'),
+      }
+    } else if (first === 'all') {
+      return {
+        defaultShowAll: false,
+        keywords: rest,
+        searchItems: this.items,
+      }
+    } else {
+      return {
+        defaultShowAll: false,
+        keywords,
+        searchItems: this.items.filter(item => item.type === 'tab'),
+      }
+    }
+  }
+
   search(query: string) {
-    const keywords = query.split(/\s+/).filter(Boolean)
     const result: Entry[] = []
-    for (const item of this.items) {
+    const { keywords, searchItems, defaultShowAll } = this.preprocess(query)
+
+    if (defaultShowAll && keywords.length === 0) {
+      for (const item of searchItems) {
+        result.push({ score: 1, item, titleMatches: [], urlMatches: [] })
+      }
+      return result
+    }
+
+    for (const item of searchItems) {
       const entry: Entry = {
         item,
         titleMatches: [],

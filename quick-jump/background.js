@@ -90,7 +90,7 @@ chrome.commands.onCommand.addListener(command => {
 function handleQueryItems(request, sender, sendResponse) {
   let readyCount = 0
   function tryComplete() {
-    if (readyCount === 2) {
+    if (readyCount === 3) {
       sendResponse(items)
     }
   }
@@ -114,7 +114,6 @@ function handleQueryItems(request, sender, sendResponse) {
           bookmarkItems.push({
             type: 'bookmark',
             itemKey: `bookmark-${mark.id}`,
-            id: mark.id,
             path: prefix,
             title: mark.title,
             url: mark.url,
@@ -126,20 +125,42 @@ function handleQueryItems(request, sender, sendResponse) {
 
   chrome.tabs.query({}, tabs => {
     /** @type {Item[]} */
-    const tabItems = tabs.map(tab => ({
-      type: 'tab',
-      itemKey: `tab-${tab.id}`,
-      id: tab.id,
-      windowId: tab.windowId,
-      title: tab.title,
-      url: tab.url,
-      favIconUrl: tab.favIconUrl,
-    }))
-    items.push(...tabItems)
-
+    for (const tab of tabs) {
+      items.push({
+        type: 'tab',
+        itemKey: `tab-${tab.id}`,
+        id: tab.id,
+        windowId: tab.windowId,
+        title: tab.title,
+        url: tab.url,
+        favIconUrl: tab.favIconUrl,
+      })
+    }
     readyCount++
     tryComplete()
   })
+
+  chrome.history.search(
+    {
+      text: '',
+      endTime: new Date().valueOf(),
+      startTime: new Date().valueOf() - 7 * 86400e3,
+      maxResults: 100,
+    },
+    historyEntries => {
+      for (const entry of historyEntries) {
+        items.push({
+          type: 'history',
+          itemKey: `history-${entry.id}`,
+          url: entry.url,
+          title: entry.title,
+          lastVisitTime: entry.lastVisitTime,
+        })
+      }
+      readyCount++
+      tryComplete()
+    },
+  )
 
   // 返回 true 表示我们将会异步地调用 `sendResponse`
   return true

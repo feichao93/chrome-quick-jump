@@ -1,23 +1,42 @@
 import React, { ReactNode, useEffect, useMemo, useRef, useState } from 'react'
-import { Callout, Classes, Icon, MenuItem } from '@blueprintjs/core'
+import { Classes, Code, Icon, MenuItem } from '@blueprintjs/core'
 import { IItemRendererProps, Omnibar } from '@blueprintjs/select'
 import Matcher, { Entry, Range } from './Matcher'
 import * as env from './env'
 import './App.css'
 
-function StandaloneModeInfo() {
+const StandaloneModeInfo = React.memo(() => {
   if (!env.isStandaloneMode()) {
     return null
   }
   return (
-    <Callout className="standalone-info" intent="primary" title="独立标签页说明" icon="info-sign">
-      quick-jump 通过向页面注入代码来实现页面内弹框。 受 chrome
-      政策限制，扩展不能向部分页面注入代码，quick-jump 已打开独立页面。
-    </Callout>
+    <li className={Classes.RUNNING_TEXT}>
+      独立标签页说明：
+      <br />受 chrome 政策限制，扩展不能向部分页面注入代码，quick-jump 已打开独立页面。
+    </li>
   )
-}
+})
 
-function Path({ path }: { path: string[] }) {
+const InitialContent = React.memo(() => (
+  <div>
+    <ul className={Classes.LIST}>
+      <li>输入关键词开始搜索标签页，支持拼音</li>
+      <li>
+        输入 <Code>h</Code> 或 <Code>history</Code> 搜索历史记录
+      </li>
+      <li>
+        输入 <Code>b</Code> 或 <Code>bookmark</Code> 搜索书签栏
+      </li>
+      <li>
+        输入 <Code>all</Code> 搜索所有地方（标签页、历史记录、书签栏）
+      </li>
+      <li>再次按下快捷键可以快速选中已输入的文本</li>
+      <StandaloneModeInfo />
+    </ul>
+  </div>
+))
+
+function BookmarkPath({ path }: { path: string[] }) {
   const array: ReactNode[] = []
   for (let i = 0; i < path.length - 1; i++) {
     array.push(path[i])
@@ -31,6 +50,31 @@ function Path({ path }: { path: string[] }) {
     </div>
   )
 }
+
+const LastVisitTime = React.memo(({ time }: { time: number }) => {
+  const now = new Date().valueOf()
+  const diff = now - time
+
+  function renderContent() {
+    if (diff < 60e3) {
+      return '刚刚'
+    } else if (diff < 30 * 60e3) {
+      return '最近一小时访问过'
+    } else if (diff < 86400e3) {
+      return '最近一天访问过'
+    } else if (diff < 7 * 86400e3) {
+      return '最近一周访问过'
+    } else {
+      return '更早'
+    }
+  }
+
+  return (
+    <div>
+      <small className={Classes.TEXT_MUTED}>历史记录：{renderContent()}</small>
+    </div>
+  )
+})
 
 function decorate(str: string, matches: Range[]) {
   if (matches == null || matches.length === 0) {
@@ -55,7 +99,7 @@ function decorate(str: string, matches: Range[]) {
 const itemRenderer = (entry: Entry, { modifiers, handleClick }: IItemRendererProps) => {
   return (
     <MenuItem
-      key={entry.item.id}
+      key={entry.item.itemKey}
       active={modifiers.active}
       text={
         <div className="search-item">
@@ -66,7 +110,8 @@ const itemRenderer = (entry: Entry, { modifiers, handleClick }: IItemRendererPro
             <small className={Classes.TEXT_MUTED}>
               {decorate(entry.item.url, entry.urlMatches)}
             </small>
-            {entry.item.type === 'bookmark' && <Path path={entry.item.path} />}
+            {entry.item.type === 'bookmark' && <BookmarkPath path={entry.item.path} />}
+            {entry.item.type === 'history' && <LastVisitTime time={entry.item.lastVisitTime} />}
           </div>
           {entry.item.type === 'tab' && entry.item.favIconUrl && (
             <img alt="favicon" src={entry.item.favIconUrl} />
@@ -104,7 +149,6 @@ export default function App() {
 
   return (
     <>
-      <StandaloneModeInfo />
       <Omnibar
         query={query}
         overlayProps={{ className: env.isStandaloneMode() ? 'env-standalone' : '' }}
@@ -118,6 +162,7 @@ export default function App() {
             onChangeActiveItemKey(entry.item.itemKey)
           }
         }}
+        initialContent={<InitialContent />}
         isOpen={isOpen}
         onClose={() => {
           setIsOpen(false)

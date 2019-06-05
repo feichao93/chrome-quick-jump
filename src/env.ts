@@ -1,9 +1,9 @@
-// TODO 还需要考虑历史记录
-export type Item = TabItem | BookmarkItem // | HistoryItem
+export type Item = TabItem | BookmarkItem | HistoryItem
 
 export type TabItem = {
   type: 'tab'
   itemKey: string
+
   id: number
   windowId: number
   title: string
@@ -14,19 +14,19 @@ export type TabItem = {
 export type BookmarkItem = {
   type: 'bookmark'
   itemKey: string
-  id: string
 
   path: string[]
   title: string
   url: string
 }
 
-// export type HistoryItem = {
-//   type: 'history'
-//   id: string | number
-//   title: string
-//   url: string
-// }
+export type HistoryItem = {
+  type: 'history'
+  itemKey: string
+  title: string
+  url: string
+  lastVisitTime: number
+}
 
 /** 获取 QuickJumpApp 的运行模式 */
 function getMode(): 'iframe' | 'standalone' {
@@ -42,7 +42,7 @@ export function isStandaloneMode() {
   return getMode() === 'standalone'
 }
 
-/** 异步获取浏览器的标签页、历史记录、收藏夹信息 */
+/** 异步获取浏览器的标签页、历史记录、书签栏信息 */
 function queryItems(callback: (items: Item[]) => void) {
   chrome.runtime.sendMessage({ type: 'query-items' }, (items: Item[]) => {
     callback(items)
