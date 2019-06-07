@@ -160,6 +160,6 @@ export default class Matcher {
 
     sortBy(result, entry => -entry.score)
 
-    return result
+    return result.slice(0, 100)
   }
 }
