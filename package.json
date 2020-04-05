@@ -15,7 +15,7 @@
   "dependencies": {
     "@blueprintjs/core": "^3.15.1",
     "@blueprintjs/select": "^3.8.1",
-    "@types/node": "^12.0.4",
+    "@types/node": "^13.11.0",
     "@types/react": "^16.8.19",
     "@types/react-dom": "^16.8.4",
     "normalize.css": "^8.0.1",
@@ -23,11 +23,11 @@
     "react-dom": "^16.8.6"
   },
   "devDependencies": {
-    "@types/chrome": "^0.0.86",
-    "css-loader": "^2.1.1",
-    "prettier": "^1.17.1",
-    "raw-loader": "^2.0.0",
-    "style-loader": "^0.23.1",
+    "@types/chrome": "^0.0.103",
+    "css-loader": "^3.4.2",
+    "prettier": "^2.0.2",
+    "raw-loader": "^4.0.0",
+    "style-loader": "^1.1.3",
     "ts-loader": "^6.0.2",
     "typescript": "^3.5.1",
     "webpack": "^4.32.2",
