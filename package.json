@@ -4,8 +4,7 @@
   "name": "chrome-quick-jump",
   "author": {
     "name": "Shi Feichao",
-    "email": "feichao.sfc@alibaba-inc.com",
-    "url": "https://shinima.pw"
+    "email": "feichao.sfc@alibaba-inc.com"
   },
   "license": "MIT",
   "scripts": {
